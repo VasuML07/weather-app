@@ -15,6 +15,7 @@
             --accent-mild: #4dff88;
             --glass: rgba(255, 255, 255, 0.03);
             --border: rgba(255, 255, 255, 0.08);
+            --error-red: #ff4d4d;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -161,6 +162,26 @@
 
         @keyframes pulse { 0% { opacity: 0.2; } 50% { opacity: 1; } 100% { opacity: 0.2; } }
 
+        /* Retry Button */
+        .retry-btn {
+            margin-top: 1rem;
+            padding: 10px 20px;
+            background: transparent;
+            border: 1px solid var(--text-main);
+            color: var(--text-main);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            display: none;
+        }
+
+        .retry-btn:hover {
+            background: var(--text-main);
+            color: var(--bg-color);
+        }
+
         /* Responsive */
         @media (max-width: 600px) {
             .hero-temp { font-size: 5rem; }
@@ -184,6 +205,9 @@
         
         <div class="narrative" id="narrativeText">AWAITING INPUT...</div>
 
+        <!-- Retry Button -->
+        <button class="retry-btn" id="retryBtn">RETRY CONNECTION</button>
+
         <div class="data-grid">
             <div class="data-item">
                 <span class="label">Wind Velocity</span>
@@ -197,7 +221,6 @@
                 <span class="label">Humidity</span>
                 <span class="value" id="humidVal">--%</span>
             </div>
-            <!-- Optional: Add Feels Like -->
             <div class="data-item">
                 <span class="label">Feels Like</span>
                 <span class="value" id="feelsLikeVal">--°C</span>
@@ -209,12 +232,13 @@
         // --- CONFIGURATION ---
         // ⚠️ REPLACE THIS WITH YOUR WEATHERAPI.COM KEY
         const API_KEY = "cb5ec66027fe4511a06160739261805"; 
-        const BASE_URL = "http://api.weatherapi.com/v1/current.json";
+        const BASE_URL = "https://api.weatherapi.com/v1/current.json"; // Use HTTPS!
 
         // --- STATE ---
         let particles = [];
         let particleType = 'none'; // 'rain', 'snow', 'embers', 'none'
         let canvas, ctx, width, height;
+        let lastCity = ""; // Store last searched city for retry
 
         // --- DOM ELEMENTS ---
         const cityInput = document.getElementById('cityInput');
@@ -226,6 +250,7 @@
         const conditionVal = document.getElementById('conditionVal');
         const humidVal = document.getElementById('humidVal');
         const feelsLikeVal = document.getElementById('feelsLikeVal');
+        const retryBtn = document.getElementById('retryBtn');
 
         // --- INITIALIZATION ---
         window.addEventListener('load', () => {
@@ -234,7 +259,13 @@
             resizeCanvas();
             window.addEventListener('resize', resizeCanvas);
             animateParticles();
-            
+
+            // Check online status
+            if (!navigator.onLine) {
+                showOfflineError();
+                return;
+            }
+
             // Default load only if key is valid
             if (API_KEY && API_KEY !== "YOUR_WEATHERAPI_KEY_HERE") {
                 cityInput.value = "London";
@@ -246,10 +277,29 @@
             }
         });
 
+        // Listen for online/offline events
+        window.addEventListener('online', () => {
+            narrativeText.textContent = "CONNECTION RESTORED. RETRYING...";
+            narrativeText.style.color = "#4dff88";
+            if (lastCity) {
+                setTimeout(() => fetchWeather(lastCity), 1000);
+            }
+        });
+
+        window.addEventListener('offline', showOfflineError);
+
         cityInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 const city = cityInput.value.trim();
                 if (city) fetchWeather(city);
+            }
+        });
+
+        retryBtn.addEventListener('click', () => {
+            if (lastCity) {
+                fetchWeather(lastCity);
+            } else {
+                fetchWeather(cityInput.value.trim() || "London");
             }
         });
 
@@ -260,6 +310,14 @@
             canvas.height = height;
         }
 
+        function showOfflineError() {
+            narrativeText.textContent = "NO INTERNET CONNECTION.";
+            narrativeText.style.color = "#ff4d4d";
+            retryBtn.style.display = "inline-block";
+            loader.style.display = "none";
+            interfaceEl.style.opacity = "1";
+        }
+
         // --- CORE LOGIC ---
         async function fetchWeather(city) {
             if (!API_KEY || API_KEY === "YOUR_WEATHERAPI_KEY_HERE") {
@@ -267,16 +325,23 @@
                 return;
             }
 
+            lastCity = city; // Save for retry
             interfaceEl.style.opacity = '0.2';
             loader.style.display = 'block';
-            narrativeText.style.color = "rgba(255,255,255,0.6)"; // Reset error color
-            
+            retryBtn.style.display = "none";
+            narrativeText.style.color = "rgba(255,255,255,0.6)";
+
             try {
+                // Check if online
+                if (!navigator.onLine) {
+                    throw new Error("NetworkError: No internet connection");
+                }
+
                 // Fetch from WeatherAPI
                 const url = `${BASE_URL}?key=${API_KEY}&q=${encodeURIComponent(city)}&aqi=no`;
                 console.log("🌐 Requesting:", url);
 
-                const response = await fetch(url);
+                const response = await fetch(url, { timeout: 10000 }); // 10 sec timeout
                 console.log("📡 Response Status:", response.status);
 
                 if (!response.ok) {
@@ -306,8 +371,12 @@
                     errorMsg = "CITY NOT FOUND. TRY AGAIN.";
                 } else if (err.message.includes("403")) {
                     errorMsg = "KEY NOT ACTIVE YET. WAIT 2 HOURS.";
-                } else if (err.message.includes("NetworkError") || err.message.includes("Failed to fetch")) {
+                } else if (err.message.includes("NetworkError") || err.message.includes("Failed to fetch") || !navigator.onLine) {
                     errorMsg = "NO INTERNET CONNECTION.";
+                    showOfflineError();
+                    return; // Don't hide loader yet
+                } else if (err.message.includes("timeout")) {
+                    errorMsg = "REQUEST TIMED OUT. TRY AGAIN.";
                 } else {
                     errorMsg = "UNKNOWN ERROR. CHECK CONSOLE.";
                 }
