@@ -197,6 +197,11 @@
                 <span class="label">Humidity</span>
                 <span class="value" id="humidVal">--%</span>
             </div>
+            <!-- Optional: Add Feels Like -->
+            <div class="data-item">
+                <span class="label">Feels Like</span>
+                <span class="value" id="feelsLikeVal">--°C</span>
+            </div>
         </div>
     </div>
 
@@ -220,6 +225,7 @@
         const windVal = document.getElementById('windVal');
         const conditionVal = document.getElementById('conditionVal');
         const humidVal = document.getElementById('humidVal');
+        const feelsLikeVal = document.getElementById('feelsLikeVal');
 
         // --- INITIALIZATION ---
         window.addEventListener('load', () => {
@@ -229,18 +235,22 @@
             window.addEventListener('resize', resizeCanvas);
             animateParticles();
             
-            // Default load
-            if(API_KEY !== "YOUR_WEATHERAPI_KEY_HERE") {
+            // Default load only if key is valid
+            if (API_KEY && API_KEY !== "YOUR_WEATHERAPI_KEY_HERE") {
                 cityInput.value = "London";
                 fetchWeather("London");
             } else {
-                narrativeText.textContent = "ERROR: MISSING API KEY IN CODE";
-                narrativeText.style.color = "red";
+                narrativeText.textContent = "ERROR: MISSING OR INVALID API KEY IN CODE";
+                narrativeText.style.color = "#ff4d4d";
+                console.error("Please replace 'YOUR_WEATHERAPI_KEY_HERE' with your actual WeatherAPI.com key.");
             }
         });
 
         cityInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') fetchWeather(cityInput.value);
+            if (e.key === 'Enter') {
+                const city = cityInput.value.trim();
+                if (city) fetchWeather(city);
+            }
         });
 
         function resizeCanvas() {
@@ -263,13 +273,21 @@
             
             try {
                 // Fetch from WeatherAPI
-                const url = `${BASE_URL}?key=${API_KEY}&q=${city}&aqi=no`;
+                const url = `${BASE_URL}?key=${API_KEY}&q=${encodeURIComponent(city)}&aqi=no`;
+                console.log("🌐 Requesting:", url);
+
                 const response = await fetch(url);
-                
-                if (!response.ok) throw new Error("Location Unknown or API Error");
+                console.log("📡 Response Status:", response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error("❌ API Error:", errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
                 
                 const data = await response.json();
-                
+                console.log("✅ Data Received:", data);
+
                 // Extract Data
                 const location = data.location;
                 const current = data.current;
@@ -279,10 +297,24 @@
                 setAtmosphere(condition.text, current.temp_c);
 
             } catch (err) {
-                console.error(err);
-                narrativeText.textContent = "SIGNAL LOST. CHECK CITY NAME.";
+                console.error(" Fetch Error:", err);
+                let errorMsg = "SIGNAL LOST.";
+
+                if (err.message.includes("401")) {
+                    errorMsg = "INVALID API KEY. CHECK CODE.";
+                } else if (err.message.includes("400")) {
+                    errorMsg = "CITY NOT FOUND. TRY AGAIN.";
+                } else if (err.message.includes("403")) {
+                    errorMsg = "KEY NOT ACTIVE YET. WAIT 2 HOURS.";
+                } else if (err.message.includes("NetworkError") || err.message.includes("Failed to fetch")) {
+                    errorMsg = "NO INTERNET CONNECTION.";
+                } else {
+                    errorMsg = "UNKNOWN ERROR. CHECK CONSOLE.";
+                }
+
+                narrativeText.textContent = errorMsg;
                 narrativeText.style.color = "#ff4d4d";
-                particleType = 'none'; // Stop particles on error
+                particleType = 'none';
                 particles = [];
             } finally {
                 loader.style.display = 'none';
@@ -294,6 +326,9 @@
             // Temp
             tempDisplay.textContent = `${Math.round(current.temp_c)}°`;
             
+            // Feels Like
+            feelsLikeVal.textContent = `${Math.round(current.feelslike_c)}°C`;
+
             // Narrative Storytelling
             const stories = getStory(conditionObj.text, current.temp_c);
             narrativeText.textContent = stories.line;
