@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aether | Immersive Weather</title>
+    <title>Aether | Immersive Weather (WeatherAPI)</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Syncopate:wght@700&display=swap');
 
@@ -156,6 +156,7 @@
             letter-spacing: 5px;
             animation: pulse 1.5s infinite;
             display: none;
+            z-index: 20;
         }
 
         @keyframes pulse { 0% { opacity: 0.2; } 50% { opacity: 1; } 100% { opacity: 0.2; } }
@@ -176,7 +177,7 @@
 
     <div class="interface" id="interface">
         <div class="search-container">
-            <input type="text" id="cityInput" placeholder="Enter coordinates (City Name)" autocomplete="off">
+            <input type="text" id="cityInput" placeholder="Enter City Name..." autocomplete="off">
         </div>
 
         <div class="hero-temp" id="tempDisplay">--°</div>
@@ -193,16 +194,17 @@
                 <span class="value" id="conditionVal">--</span>
             </div>
             <div class="data-item">
-                <span class="label">Elevation</span>
-                <span class="value" id="elevVal">-- m</span>
+                <span class="label">Humidity</span>
+                <span class="value" id="humidVal">--%</span>
             </div>
         </div>
     </div>
 
     <script>
         // --- CONFIGURATION ---
-        const GEO_API = 'https://geocoding-api.open-meteo.com/v1/search';
-        const WEATHER_API = 'https://api.open-meteo.com/v1/forecast';
+        // ⚠️ REPLACE THIS WITH YOUR WEATHERAPI.COM KEY
+        const API_KEY = "YOUR_WEATHERAPI_KEY_HERE"; 
+        const BASE_URL = "http://api.weatherapi.com/v1/current.json";
 
         // --- STATE ---
         let particles = [];
@@ -217,7 +219,7 @@
         const narrativeText = document.getElementById('narrativeText');
         const windVal = document.getElementById('windVal');
         const conditionVal = document.getElementById('conditionVal');
-        const elevVal = document.getElementById('elevVal');
+        const humidVal = document.getElementById('humidVal');
 
         // --- INITIALIZATION ---
         window.addEventListener('load', () => {
@@ -228,8 +230,13 @@
             animateParticles();
             
             // Default load
-            cityInput.value = "Tokyo";
-            fetchWeather("Tokyo");
+            if(API_KEY !== "YOUR_WEATHERAPI_KEY_HERE") {
+                cityInput.value = "London";
+                fetchWeather("London");
+            } else {
+                narrativeText.textContent = "ERROR: MISSING API KEY IN CODE";
+                narrativeText.style.color = "red";
+            }
         });
 
         cityInput.addEventListener('keypress', (e) => {
@@ -245,88 +252,102 @@
 
         // --- CORE LOGIC ---
         async function fetchWeather(city) {
+            if (!API_KEY || API_KEY === "YOUR_WEATHERAPI_KEY_HERE") {
+                alert("Please open the HTML file and insert your WeatherAPI.com key in the JavaScript section.");
+                return;
+            }
+
             interfaceEl.style.opacity = '0.2';
             loader.style.display = 'block';
+            narrativeText.style.color = "rgba(255,255,255,0.6)"; // Reset error color
             
             try {
-                // 1. Geocoding
-                const geoRes = await fetch(`${GEO_API}?name=${city}&count=1&language=en&format=json`);
-                const geoData = await geoRes.json();
+                // Fetch from WeatherAPI
+                const url = `${BASE_URL}?key=${API_KEY}&q=${city}&aqi=no`;
+                const response = await fetch(url);
                 
-                if (!geoData.results) throw new Error("Location Unknown");
+                if (!response.ok) throw new Error("Location Unknown or API Error");
                 
-                const { latitude, longitude, name, country, elevation } = geoData.results[0];
+                const data = await response.json();
+                
+                // Extract Data
+                const location = data.location;
+                const current = data.current;
+                const condition = current.condition;
 
-                // 2. Weather
-                const weatherRes = await fetch(`${WEATHER_API}?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
-                const data = await weatherRes.json();
-                const current = data.current_weather;
-
-                updateUI(name, country, current, elevation);
-                setAtmosphere(current.weathercode, current.temperature);
+                updateUI(location.name, location.country, current, condition);
+                setAtmosphere(condition.text, current.temp_c);
 
             } catch (err) {
-                narrativeText.textContent = "SIGNAL LOST. CHECK COORDINATES.";
+                console.error(err);
+                narrativeText.textContent = "SIGNAL LOST. CHECK CITY NAME.";
                 narrativeText.style.color = "#ff4d4d";
+                particleType = 'none'; // Stop particles on error
+                particles = [];
             } finally {
                 loader.style.display = 'none';
                 interfaceEl.style.opacity = '1';
             }
         }
 
-        function updateUI(city, country, current, elevation) {
+        function updateUI(city, country, current, conditionObj) {
             // Temp
-            tempDisplay.textContent = `${Math.round(current.temperature)}°`;
+            tempDisplay.textContent = `${Math.round(current.temp_c)}°`;
             
             // Narrative Storytelling
-            const stories = getStory(current.weathercode, current.temperature);
+            const stories = getStory(conditionObj.text, current.temp_c);
             narrativeText.textContent = stories.line;
             narrativeText.style.color = stories.color;
 
             // Data
-            windVal.textContent = `${current.windspeed} km/h`;
-            conditionVal.textContent = getConditionName(current.weathercode);
-            elevVal.textContent = `${elevation} m`;
+            windVal.textContent = `${current.wind_kph} km/h ${current.wind_dir}`;
+            conditionVal.textContent = conditionObj.text;
+            humidVal.textContent = `${current.humidity}%`;
 
             // Dynamic Color for Temp
-            const hue = current.temperature > 20 ? 0 : (current.temperature < 10 ? 220 : 140);
+            const hue = current.temp_c > 20 ? 0 : (current.temp_c < 10 ? 220 : 140);
             tempDisplay.style.textShadow = `0 0 40px hsla(${hue}, 100%, 50%, 0.4)`;
         }
 
         // --- STORYTELLING ENGINE ---
-        function getStory(code, temp) {
-            if (code <= 1) return { line: "THE SKY IS CLEAR. THE VOID STARES BACK.", color: "#fff" };
-            if (code <= 3) return { line: "CLOUDS OBSCURE THE VISION.", color: "#aaa" };
-            if (code <= 48) return { line: "VISIBILITY COMPROMISED BY FOG.", color: "#ccc" };
-            if (code <= 67) return { line: "THE ATMOSPHERE IS WEEPING.", color: "#4d79ff" }; // Rain
-            if (code <= 77) return { line: "FROZEN PARTICLES DESCEND.", color: "#fff" }; // Snow
-            if (code <= 82) return { line: "VIOLENT DISCHARGE DETECTED.", color: "#ff4d4d" }; // Showers
-            if (code >= 95) return { line: "ELECTRICAL CHAOS IMMINENT.", color: "#ffff00" }; // Thunder
-            
-            return { line: "DATA CORRUPTED.", color: "#fff" };
-        }
+        function getStory(conditionText, temp) {
+            const lowerText = conditionText.toLowerCase();
 
-        function getConditionName(code) {
-            const codes = {
-                0: "Clear", 1: "Mainly Clear", 2: "Partly Cloudy", 3: "Overcast",
-                45: "Fog", 48: "Fog",
-                51: "Drizzle", 53: "Drizzle", 55: "Drizzle",
-                61: "Rain", 63: "Rain", 65: "Rain",
-                71: "Snow", 73: "Snow", 75: "Snow",
-                95: "Thunderstorm", 96: "Thunderstorm", 99: "Thunderstorm"
-            };
-            return codes[code] || "Unknown";
+            if (lowerText.includes("sunny") || lowerText.includes("clear")) 
+                return { line: "THE VOID IS ILLUMINATED.", color: "#fff" };
+            
+            if (lowerText.includes("cloud") || lowerText.includes("overcast")) 
+                return { line: "VISION OBSCURED BY VAPOR.", color: "#aaa" };
+            
+            if (lowerText.includes("fog") || lowerText.includes("mist")) 
+                return { line: "VISIBILITY COMPROMISED.", color: "#ccc" };
+            
+            if (lowerText.includes("rain") || lowerText.includes("drizzle")) 
+                return { line: "THE ATMOSPHERE IS WEEPING.", color: "#4d79ff" };
+            
+            if (lowerText.includes("snow") || lowerText.includes("blizzard")) 
+                return { line: "FROZEN PARTICLES DESCEND.", color: "#fff" };
+            
+            if (lowerText.includes("thunder") || lowerText.includes("storm")) 
+                return { line: "ELECTRICAL CHAOS IMMINENT.", color: "#ffff00" };
+            
+            return { line: "ATMOSPHERIC DATA RECEIVED.", color: "#fff" };
         }
 
         // --- PARTICLE ENGINE ---
-        function setAtmosphere(code, temp) {
+        function setAtmosphere(conditionText, temp) {
             particles = [];
             particleType = 'none';
+            const lowerText = conditionText.toLowerCase();
 
-            // Determine Type
-            if (code >= 51 && code <= 67) particleType = 'rain';
-            else if (code >= 71 && code <= 77) particleType = 'snow';
-            else if (code >= 95) particleType = 'embers'; // Chaos mode for thunderstorms
+            // Determine Type based on WeatherAPI text descriptions
+            if (lowerText.includes("rain") || lowerText.includes("drizzle")) {
+                particleType = 'rain';
+            } else if (lowerText.includes("snow") || lowerText.includes("blizzard")) {
+                particleType = 'snow';
+            } else if (lowerText.includes("thunder") || lowerText.includes("storm")) {
+                particleType = 'embers'; // Chaos mode
+            }
             
             // Init Particles
             const count = particleType === 'none' ? 0 : 150;
