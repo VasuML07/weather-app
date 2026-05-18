@@ -645,26 +645,55 @@
         }
 
         function handleFetchError(err) {
-            let errorMsg = "SIGNAL LOST.";
+    console.error("Weather Fetch Error:", err); // Always log to console for debugging
 
-            if (err.message.includes("401")) errorMsg = "INVALID API KEY. CHECK CODE.";
-            else if (err.message.includes("400")) errorMsg = "CITY NOT FOUND. TRY AGAIN.";
-            else if (err.message.includes("403")) errorMsg = "KEY NOT ACTIVE YET. WAIT 2 HOURS.";
-            else if (err.message.includes("NetworkError") || !navigator.onLine) {
-                errorMsg = "NO INTERNET CONNECTION.";
-                showOfflineError();
-                return;
-            } else if (err.message.includes("timeout")) errorMsg = "REQUEST TIMED OUT. TRY AGAIN.";
-            else errorMsg = "ERROR: " + err.message;
+    let userMessage = "";
+    let shouldShowRetry = true;
 
-            narrativeText.textContent = errorMsg;
-            narrativeText.style.color = "#ff4d4d";
-            particleType = 'none';
-            particles = [];
-            
-            // Show retry button on error
-            retryBtn.style.display = "inline-block";
-        }
+    if (err.message.includes("401")) {
+        userMessage = "API Key Invalid — Please Check Configuration";
+    } else if (err.message.includes("400")) {
+        userMessage = "City Not Found — Try Another Name";
+    } else if (err.message.includes("403")) {
+        userMessage = "API Access Restricted — Contact Support";
+    } else if (err.message.includes("NetworkError") || !navigator.onLine) {
+        showOfflineError(); // This already handles offline state nicely
+        return;
+    } else if (err.message.includes("timeout")) {
+        userMessage = "Request Timed Out — Retrying...";
+        setTimeout(() => {
+            if (lastCity) fetchWeather(lastCity);
+        }, 2000);
+        shouldShowRetry = false; // Auto-retrying, no need for button
+    } else {
+        // For unknown errors: don't show anything scary to user
+        userMessage = "Atmospheric Signal Unstable...";
+        // Optionally auto-retry after delay
+        setTimeout(() => {
+            if (lastCity) fetchWeather(lastCity);
+        }, 3000);
+        shouldShowRetry = false;
+    }
+
+    // Only update narrative if we have a meaningful message
+    if (userMessage) {
+        narrativeText.textContent = userMessage;
+        narrativeText.style.color = "rgba(255, 77, 77, 0.8)"; // Softer red
+    } else {
+        // Fallback: keep last known good state or show neutral
+        narrativeText.textContent = "Awaiting Atmospheric Data...";
+        narrativeText.style.color = "rgba(128,128,128,0.6)";
+    }
+
+    particleType = 'none';
+    particles = [];
+
+    if (shouldShowRetry) {
+        retryBtn.style.display = "inline-block";
+    } else {
+        retryBtn.style.display = "none";
+    }
+}
 
         function updateUI(city, country, current, astro) {
             tempDisplay.textContent = `${Math.round(current.temp_c)}°`;
