@@ -3,19 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aether | Immersive Weather Ultimate</title>
+    <title>Aether | Immersive Weather</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Syncopate:wght@700&display=swap');
 
         :root {
             --bg-color: #050505;
             --text-main: #ffffff;
-            --accent-hot: #ff4d4d;
-            --accent-cold: #4d79ff;
-            --accent-mild: #4dff88;
             --glass: rgba(255, 255, 255, 0.03);
             --border: rgba(255, 255, 255, 0.08);
-            --error-red: #ff4d4d;
             --card-bg: rgba(255,255,255,0.05);
             --gradient-start: #0f0c29;
             --gradient-end: #302b63;
@@ -105,7 +101,7 @@
             color: var(--bg-color);
         }
 
-        /* Search Bar - Minimalist */
+        /* Search Bar */
         .search-container {
             margin-bottom: 3rem;
             position: relative;
@@ -133,7 +129,7 @@
 
         input::placeholder { color: rgba(128,128,128,0.5); }
 
-        /* The Hero Temperature */
+        /* Hero Temperature */
         .hero-temp {
             font-family: 'Syncopate', sans-serif;
             font-size: 8rem;
@@ -153,6 +149,7 @@
             color: rgba(128,128,128,0.7);
             margin-bottom: 1rem;
             min-height: 1.5em;
+            transition: color 0.5s ease;
         }
 
         /* Astro Info */
@@ -185,7 +182,7 @@
             font-weight: 500;
         }
 
-        /* Data Grid - Floating Glass */
+        /* Data Grid */
         .data-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -340,8 +337,8 @@
     <div class="interface" id="interface">
         <!-- Top Controls -->
         <div class="top-controls">
-            <button class="control-btn" id="geoBtn">📍 Detect My Location</button>
-            <button class="control-btn" id="themeToggle">🌙 Toggle Theme</button>
+            <button class="control-btn" id="geoBtn"> Detect Location</button>
+            <button class="control-btn" id="themeToggle">🌙 Theme</button>
             <button class="control-btn" id="voiceBtn">🔊 Read Aloud</button>
         </div>
 
@@ -402,17 +399,13 @@
         <!-- Hourly Forecast -->
         <div class="forecast-section">
             <h2 class="section-title">HOURLY FORECAST (NEXT 24H)</h2>
-            <div class="hourly-grid" id="hourlyGrid">
-                <!-- Hourly cards injected here -->
-            </div>
+            <div class="hourly-grid" id="hourlyGrid"></div>
         </div>
 
         <!-- 3-Day Forecast -->
         <div class="forecast-section">
             <h2 class="section-title">3-DAY FORECAST</h2>
-            <div class="daily-grid" id="dailyGrid">
-                <!-- Daily cards injected here -->
-            </div>
+            <div class="daily-grid" id="dailyGrid"></div>
         </div>
     </div>
 
@@ -432,8 +425,7 @@
 
     <script>
         // --- CONFIGURATION ---
-        // ⚠️ IMPORTANT: REPLACE THIS WITH YOUR OWN KEY FROM https://www.weatherapi.com/
-        // The key below is likely invalid or expired.
+        // ️ IMPORTANT: REPLACE THIS WITH YOUR OWN KEY FROM https://www.weatherapi.com/
         const API_KEY = "YOUR_API_KEY_HERE"; 
         const BASE_URL_FORECAST = "https://api.weatherapi.com/v1/forecast.json";
 
@@ -444,6 +436,7 @@
         let lastCity = "";
         let currentAudio = null;
         let speechSynthesis = window.speechSynthesis;
+        let hasInteracted = false; // To handle audio autoplay policy
 
         // --- DOM ELEMENTS ---
         const cityInput = document.getElementById('cityInput');
@@ -504,11 +497,15 @@
                     fetchWeather("London");
                 }
             } else {
-                narrativeText.textContent = "ERROR: PLEASE ADD API KEY IN CODE";
+                narrativeText.textContent = "PLEASE ADD API KEY IN CODE";
                 narrativeText.style.color = "#ff4d4d";
-                alert("Please open the HTML file in a text editor and replace 'YOUR_API_KEY_HERE' with a valid key from weatherapi.com");
+                alert("Open the HTML file in a text editor and replace 'YOUR_API_KEY_HERE' with a valid key from weatherapi.com");
             }
         });
+
+        // Global interaction listener to allow audio playback
+        document.body.addEventListener('click', () => { hasInteracted = true; }, { once: true });
+        document.body.addEventListener('keypress', () => { hasInteracted = true; }, { once: true });
 
         // Event Listeners
         window.addEventListener('online', () => {
@@ -552,7 +549,7 @@
         themeToggle.addEventListener('click', () => {
             document.body.classList.toggle('light-mode');
             const isLight = document.body.classList.contains('light-mode');
-            themeToggle.textContent = isLight ? "☀️ Toggle Theme" : "🌙 Toggle Theme";
+            themeToggle.textContent = isLight ? "☀️ Theme" : "🌙 Theme";
             updateBackgroundGradient(isLight);
         });
 
@@ -596,16 +593,15 @@
             loader.style.display = 'block';
             retryBtn.style.display = "none";
             narrativeText.style.color = "rgba(128,128,128,0.7)";
+            narrativeText.textContent = "SYNCING ATMOSPHERE...";
 
             try {
                 if (!navigator.onLine) throw new Error("NetworkError: No internet connection");
 
-                console.log("🌐 Requesting:", url);
                 const response = await fetch(url, { timeout: 10000 });
                 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    console.error("❌ API Error:", errorText);
                     throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
                 
@@ -645,55 +641,53 @@
         }
 
         function handleFetchError(err) {
-    console.error("Weather Fetch Error:", err); // Always log to console for debugging
+            console.error("Weather Fetch Error:", err); // Log to console for devs
 
-    let userMessage = "";
-    let shouldShowRetry = true;
+            let userMessage = "";
+            let shouldShowRetry = true;
 
-    if (err.message.includes("401")) {
-        userMessage = "API Key Invalid — Please Check Configuration";
-    } else if (err.message.includes("400")) {
-        userMessage = "City Not Found — Try Another Name";
-    } else if (err.message.includes("403")) {
-        userMessage = "API Access Restricted — Contact Support";
-    } else if (err.message.includes("NetworkError") || !navigator.onLine) {
-        showOfflineError(); // This already handles offline state nicely
-        return;
-    } else if (err.message.includes("timeout")) {
-        userMessage = "Request Timed Out — Retrying...";
-        setTimeout(() => {
-            if (lastCity) fetchWeather(lastCity);
-        }, 2000);
-        shouldShowRetry = false; // Auto-retrying, no need for button
-    } else {
-        // For unknown errors: don't show anything scary to user
-        userMessage = "Atmospheric Signal Unstable...";
-        // Optionally auto-retry after delay
-        setTimeout(() => {
-            if (lastCity) fetchWeather(lastCity);
-        }, 3000);
-        shouldShowRetry = false;
-    }
+            if (err.message.includes("401")) {
+                userMessage = "API Key Invalid — Please Check Configuration";
+            } else if (err.message.includes("400")) {
+                userMessage = "City Not Found — Try Another Name";
+            } else if (err.message.includes("403")) {
+                userMessage = "API Access Restricted — Contact Support";
+            } else if (err.message.includes("NetworkError") || !navigator.onLine) {
+                showOfflineError();
+                return;
+            } else if (err.message.includes("timeout")) {
+                userMessage = "Request Timed Out — Retrying...";
+                setTimeout(() => {
+                    if (lastCity) fetchWeather(lastCity);
+                }, 2000);
+                shouldShowRetry = false;
+            } else {
+                // For unknown errors: don't show anything scary to user
+                userMessage = "Atmospheric Signal Unstable...";
+                setTimeout(() => {
+                    if (lastCity) fetchWeather(lastCity);
+                }, 3000);
+                shouldShowRetry = false;
+            }
 
-    // Only update narrative if we have a meaningful message
-    if (userMessage) {
-        narrativeText.textContent = userMessage;
-        narrativeText.style.color = "rgba(255, 77, 77, 0.8)"; // Softer red
-    } else {
-        // Fallback: keep last known good state or show neutral
-        narrativeText.textContent = "Awaiting Atmospheric Data...";
-        narrativeText.style.color = "rgba(128,128,128,0.6)";
-    }
+            // Only update narrative if we have a meaningful message
+            if (userMessage) {
+                narrativeText.textContent = userMessage;
+                narrativeText.style.color = "rgba(255, 77, 77, 0.8)"; // Softer red
+            } else {
+                narrativeText.textContent = "Awaiting Atmospheric Data...";
+                narrativeText.style.color = "rgba(128,128,128,0.6)";
+            }
 
-    particleType = 'none';
-    particles = [];
+            particleType = 'none';
+            particles = [];
 
-    if (shouldShowRetry) {
-        retryBtn.style.display = "inline-block";
-    } else {
-        retryBtn.style.display = "none";
-    }
-}
+            if (shouldShowRetry) {
+                retryBtn.style.display = "inline-block";
+            } else {
+                retryBtn.style.display = "none";
+            }
+        }
 
         function updateUI(city, country, current, astro) {
             tempDisplay.textContent = `${Math.round(current.temp_c)}°`;
@@ -759,10 +753,8 @@
             const now = new Date();
             const currentHour = now.getHours();
 
-            // Show next 24 hours starting from current hour
             for (let i = 0; i < 24; i++) {
                 const hourIndex = (currentHour + i) % 24;
-                // Safety check if hour exists
                 if(!hourlyData[hourIndex]) continue;
 
                 const hourData = hourlyData[hourIndex];
@@ -901,6 +893,9 @@
 
         // --- AUDIO ENGINE ---
         function playSound(audioElement) {
+            // Browser Autoplay Policy: Only play if user has interacted
+            if (!hasInteracted) return;
+
             if (currentAudio && currentAudio !== audioElement) {
                 currentAudio.pause();
                 currentAudio.currentTime = 0;
@@ -917,7 +912,7 @@
 
         document.addEventListener('visibilitychange', () => {
             if (document.hidden && currentAudio) currentAudio.pause();
-            else if (!document.hidden && currentAudio) currentAudio.play().catch(e => {});
+            else if (!document.hidden && currentAudio && hasInteracted) currentAudio.play().catch(e => {});
         });
 
         // --- VOICE NARRATION ---
@@ -939,9 +934,9 @@
                  ${narrativeText.textContent}`
             );
 
-            utterance.rate = 0.9; // Slightly slower for clarity
+            utterance.rate = 0.9;
             utterance.pitch = 1;
-            speechSynthesis.cancel(); // Stop any ongoing speech
+            speechSynthesis.cancel();
             speechSynthesis.speak(utterance);
         }
     </script>
