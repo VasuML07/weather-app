@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aether | Immersive Weather Pro</title>
+    <title>Aether | Immersive Weather Ultimate</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Syncopate:wght@700&display=swap');
 
@@ -17,6 +17,8 @@
             --border: rgba(255, 255, 255, 0.08);
             --error-red: #ff4d4d;
             --card-bg: rgba(255,255,255,0.05);
+            --gradient-start: #0f0c29;
+            --gradient-end: #302b63;
         }
 
         /* Light Mode Overrides */
@@ -26,20 +28,22 @@
             --glass: rgba(0, 0, 0, 0.03);
             --border: rgba(0, 0, 0, 0.08);
             --card-bg: rgba(0,0,0,0.05);
+            --gradient-start: #e0eafc;
+            --gradient-end: #cfdef3;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            background-color: var(--bg-color);
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
             color: var(--text-main);
             font-family: 'Space Grotesk', sans-serif;
-            height: 100vh;
+            min-height: 100vh;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
             align-items: center;
-            transition: background 1.5s ease, color 1.5s ease;
+            transition: background 2s ease, color 1.5s ease;
         }
 
         /* Canvas for Particles */
@@ -58,7 +62,7 @@
             position: relative;
             z-index: 10;
             width: 100%;
-            max-width: 800px;
+            max-width: 900px;
             padding: 2rem;
             text-align: center;
             opacity: 0;
@@ -77,9 +81,11 @@
             align-items: center;
             margin-bottom: 2rem;
             width: 100%;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
-        .geo-btn, .theme-toggle {
+        .control-btn {
             background: transparent;
             border: 1px solid var(--border);
             color: var(--text-main);
@@ -89,9 +95,12 @@
             font-family: 'Space Grotesk', sans-serif;
             font-size: 0.9rem;
             transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
-        .geo-btn:hover, .theme-toggle:hover {
+        .control-btn:hover {
             background: var(--text-main);
             color: var(--bg-color);
         }
@@ -142,8 +151,38 @@
             letter-spacing: 2px;
             text-transform: uppercase;
             color: rgba(128,128,128,0.7);
-            margin-bottom: 3rem;
+            margin-bottom: 1rem;
             min-height: 1.5em;
+        }
+
+        /* Astro Info */
+        .astro-info {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .astro-item {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .astro-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(128,128,128,0.6);
+            margin-bottom: 0.3rem;
+        }
+
+        .astro-value {
+            font-size: 1.1rem;
+            font-weight: 500;
         }
 
         /* Data Grid - Floating Glass */
@@ -182,23 +221,32 @@
             font-weight: 500;
         }
 
-        /* Forecast Section */
+        /* Forecast Sections */
         .forecast-section {
             margin-top: 4rem;
             width: 100%;
         }
 
-        .forecast-title {
+        .section-title {
             font-size: 1.5rem;
             margin-bottom: 1.5rem;
             text-align: center;
             letter-spacing: 2px;
         }
 
-        .forecast-grid {
+        .hourly-grid, .daily-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
             gap: 20px;
+            overflow-x: auto;
+            padding-bottom: 1rem;
+        }
+
+        .hourly-grid {
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        }
+
+        .daily-grid {
+            grid-template-columns: repeat(3, 1fr);
         }
 
         .forecast-card {
@@ -208,13 +256,14 @@
             border-radius: 16px;
             text-align: center;
             transition: transform 0.3s ease;
+            min-width: 120px;
         }
 
         .forecast-card:hover {
             transform: scale(1.05);
         }
 
-        .forecast-date {
+        .forecast-time, .forecast-date {
             font-size: 0.9rem;
             color: rgba(128,128,128,0.7);
             margin-bottom: 0.5rem;
@@ -268,16 +317,17 @@
         }
 
         /* Responsive */
-        @media (max-width: 800px) {
+        @media (max-width: 900px) {
             .hero-temp { font-size: 5rem; }
             .data-grid { grid-template-columns: repeat(2, 1fr); }
-            .forecast-grid { grid-template-columns: 1fr; }
+            .daily-grid { grid-template-columns: 1fr; }
             input { width: 200px; }
         }
 
         @media (max-width: 500px) {
             .data-grid { grid-template-columns: 1fr; }
             .top-controls { flex-direction: column; gap: 10px; }
+            .astro-info { flex-direction: column; align-items: center; }
         }
     </style>
 </head>
@@ -290,8 +340,9 @@
     <div class="interface" id="interface">
         <!-- Top Controls -->
         <div class="top-controls">
-            <button class="geo-btn" id="geoBtn">📍 Detect My Location</button>
-            <button class="theme-toggle" id="themeToggle">🌙 Toggle Theme</button>
+            <button class="control-btn" id="geoBtn">📍 Detect My Location</button>
+            <button class="control-btn" id="themeToggle">🌙 Toggle Theme</button>
+            <button class="control-btn" id="voiceBtn">🔊 Read Aloud</button>
         </div>
 
         <!-- Search -->
@@ -304,6 +355,26 @@
         
         <!-- Narrative -->
         <div class="narrative" id="narrativeText">AWAITING INPUT...</div>
+
+        <!-- Astro Info -->
+        <div class="astro-info">
+            <div class="astro-item">
+                <div class="astro-label">Sunrise</div>
+                <div class="astro-value" id="sunriseVal">--:--</div>
+            </div>
+            <div class="astro-item">
+                <div class="astro-label">Sunset</div>
+                <div class="astro-value" id="sunsetVal">--:--</div>
+            </div>
+            <div class="astro-item">
+                <div class="astro-label">Moon Phase</div>
+                <div class="astro-value" id="moonPhaseVal">--</div>
+            </div>
+            <div class="astro-item">
+                <div class="astro-label">Illumination</div>
+                <div class="astro-value" id="illuminationVal">--%</div>
+            </div>
+        </div>
 
         <!-- Retry Button -->
         <button class="retry-btn" id="retryBtn">RETRY CONNECTION</button>
@@ -328,11 +399,19 @@
             </div>
         </div>
 
+        <!-- Hourly Forecast -->
+        <div class="forecast-section">
+            <h2 class="section-title">HOURLY FORECAST (NEXT 24H)</h2>
+            <div class="hourly-grid" id="hourlyGrid">
+                <!-- Hourly cards injected here -->
+            </div>
+        </div>
+
         <!-- 3-Day Forecast -->
         <div class="forecast-section">
-            <h2 class="forecast-title">3-DAY FORECAST</h2>
-            <div class="forecast-grid" id="forecastGrid">
-                <!-- Forecast cards injected here -->
+            <h2 class="section-title">3-DAY FORECAST</h2>
+            <div class="daily-grid" id="dailyGrid">
+                <!-- Daily cards injected here -->
             </div>
         </div>
     </div>
@@ -353,8 +432,7 @@
 
     <script>
         // --- CONFIGURATION ---
-        const API_KEY = "cb5ec66027fe4511a06160739261805"; 
-        const BASE_URL_CURRENT = "https://api.weatherapi.com/v1/current.json";
+        const API_KEY = "cb5ec66027fe4511a06160739261805"; // REPLACE WITH YOUR KEY
         const BASE_URL_FORECAST = "https://api.weatherapi.com/v1/forecast.json";
 
         // --- STATE ---
@@ -363,6 +441,7 @@
         let canvas, ctx, width, height;
         let lastCity = "";
         let currentAudio = null;
+        let speechSynthesis = window.speechSynthesis;
 
         // --- DOM ELEMENTS ---
         const cityInput = document.getElementById('cityInput');
@@ -377,7 +456,13 @@
         const retryBtn = document.getElementById('retryBtn');
         const geoBtn = document.getElementById('geoBtn');
         const themeToggle = document.getElementById('themeToggle');
-        const forecastGrid = document.getElementById('forecastGrid');
+        const voiceBtn = document.getElementById('voiceBtn');
+        const hourlyGrid = document.getElementById('hourlyGrid');
+        const dailyGrid = document.getElementById('dailyGrid');
+        const sunriseVal = document.getElementById('sunriseVal');
+        const sunsetVal = document.getElementById('sunsetVal');
+        const moonPhaseVal = document.getElementById('moonPhaseVal');
+        const illuminationVal = document.getElementById('illuminationVal');
 
         // Audio elements
         const rainSound = document.getElementById('rainSound');
@@ -393,15 +478,12 @@
             window.addEventListener('resize', resizeCanvas);
             animateParticles();
 
-            // Check online status
             if (!navigator.onLine) {
                 showOfflineError();
                 return;
             }
 
-            // Load default or geolocate
-            if (API_KEY && API_KEY !== "YOUR_WEATHERAPI_KEY_HERE") {
-                // Try to get user's location first
+            if (API_KEY && API_KEY !== "YOUR_API_KEY_HERE") {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(
                         (position) => {
@@ -421,7 +503,7 @@
             } else {
                 narrativeText.textContent = "ERROR: MISSING OR INVALID API KEY IN CODE";
                 narrativeText.style.color = "#ff4d4d";
-                console.error("Please replace 'YOUR_WEATHERAPI_KEY_HERE' with your actual WeatherAPI.com key.");
+                console.error("Please replace 'YOUR_API_KEY_HERE' with your actual WeatherAPI.com key.");
             }
         });
 
@@ -429,9 +511,7 @@
         window.addEventListener('online', () => {
             narrativeText.textContent = "CONNECTION RESTORED. RETRYING...";
             narrativeText.style.color = "#4dff88";
-            if (lastCity) {
-                setTimeout(() => fetchWeather(lastCity), 1000);
-            }
+            if (lastCity) setTimeout(() => fetchWeather(lastCity), 1000);
         });
 
         window.addEventListener('offline', showOfflineError);
@@ -444,11 +524,8 @@
         });
 
         retryBtn.addEventListener('click', () => {
-            if (lastCity) {
-                fetchWeather(lastCity);
-            } else {
-                fetchWeather(cityInput.value.trim() || "London");
-            }
+            if (lastCity) fetchWeather(lastCity);
+            else fetchWeather(cityInput.value.trim() || "London");
         });
 
         geoBtn.addEventListener('click', () => {
@@ -473,6 +550,11 @@
             document.body.classList.toggle('light-mode');
             const isLight = document.body.classList.contains('light-mode');
             themeToggle.textContent = isLight ? "☀️ Toggle Theme" : "🌙 Toggle Theme";
+            updateBackgroundGradient(isLight);
+        });
+
+        voiceBtn.addEventListener('click', () => {
+            speakCurrentWeather();
         });
 
         function resizeCanvas() {
@@ -493,19 +575,17 @@
         // --- CORE LOGIC ---
         async function fetchWeatherByCoords(lat, lon) {
             lastCity = `${lat},${lon}`;
-            await fetchWeatherData(`${BASE_URL_CURRENT}?key=${API_KEY}&q=${lat},${lon}&aqi=no`, true);
-            await fetchForecastData(`${BASE_URL_FORECAST}?key=${API_KEY}&q=${lat},${lon}&days=3&aqi=no`);
+            await fetchWeatherData(`${BASE_URL_FORECAST}?key=${API_KEY}&q=${lat},${lon}&days=3&aqi=no&hour=24`, true);
         }
 
         async function fetchWeather(city) {
-            if (!API_KEY || API_KEY === "YOUR_WEATHERAPI_KEY_HERE") {
+            if (!API_KEY || API_KEY === "YOUR_API_KEY_HERE") {
                 alert("Please open the HTML file and insert your WeatherAPI.com key in the JavaScript section.");
                 return;
             }
 
             lastCity = city;
-            await fetchWeatherData(`${BASE_URL_CURRENT}?key=${API_KEY}&q=${encodeURIComponent(city)}&aqi=no`, false);
-            await fetchForecastData(`${BASE_URL_FORECAST}?key=${API_KEY}&q=${encodeURIComponent(city)}&days=3&aqi=no`);
+            await fetchWeatherData(`${BASE_URL_FORECAST}?key=${API_KEY}&q=${encodeURIComponent(city)}&days=3&aqi=no&hour=24`, false);
         }
 
         async function fetchWeatherData(url, isCoords) {
@@ -515,9 +595,7 @@
             narrativeText.style.color = "rgba(128,128,128,0.7)";
 
             try {
-                if (!navigator.onLine) {
-                    throw new Error("NetworkError: No internet connection");
-                }
+                if (!navigator.onLine) throw new Error("NetworkError: No internet connection");
 
                 console.log("🌐 Requesting:", url);
                 const response = await fetch(url, { timeout: 10000 });
@@ -530,19 +608,20 @@
                 }
                 
                 const data = await response.json();
-                console.log("✅ Current Data Received:", data);
+                console.log("✅ Full Data Received:", data);
 
                 const location = data.location;
                 const current = data.current;
-                const condition = current.condition;
+                const forecast = data.forecast;
+                const astro = forecast.forecastday[0].astro;
 
-                updateUI(location.name, location.country, current, condition);
-                setAtmosphere(condition.text, current.temp_c);
+                // Update UI
+                updateUI(location.name, location.country, current, astro);
+                setAtmosphere(current.condition.text, current.temp_c);
+                renderHourlyForecast(forecast.forecastday[0].hour);
+                renderDailyForecast(forecast.forecastday);
 
-                // Update input field if not coords
-                if (!isCoords) {
-                    cityInput.value = location.name;
-                }
+                if (!isCoords) cityInput.value = location.name;
 
             } catch (err) {
                 console.error(" Fetch Error:", err);
@@ -553,45 +632,18 @@
             }
         }
 
-        async function fetchForecastData(url) {
-            try {
-                if (!navigator.onLine) return;
-
-                console.log("🌐 Requesting Forecast:", url);
-                const response = await fetch(url, { timeout: 10000 });
-                
-                if (!response.ok) {
-                    console.warn("Forecast API failed, skipping...");
-                    return;
-                }
-                
-                const data = await response.json();
-                console.log("✅ Forecast Data Received:", data);
-                renderForecast(data.forecast.forecastday);
-            } catch (err) {
-                console.error("Forecast Fetch Error:", err);
-                // Don't break UI if forecast fails
-            }
-        }
-
         function handleFetchError(err) {
             let errorMsg = "SIGNAL LOST.";
 
-            if (err.message.includes("401")) {
-                errorMsg = "INVALID API KEY. CHECK CODE.";
-            } else if (err.message.includes("400")) {
-                errorMsg = "CITY NOT FOUND. TRY AGAIN.";
-            } else if (err.message.includes("403")) {
-                errorMsg = "KEY NOT ACTIVE YET. WAIT 2 HOURS.";
-            } else if (err.message.includes("NetworkError") || err.message.includes("Failed to fetch") || !navigator.onLine) {
+            if (err.message.includes("401")) errorMsg = "INVALID API KEY. CHECK CODE.";
+            else if (err.message.includes("400")) errorMsg = "CITY NOT FOUND. TRY AGAIN.";
+            else if (err.message.includes("403")) errorMsg = "KEY NOT ACTIVE YET. WAIT 2 HOURS.";
+            else if (err.message.includes("NetworkError") || !navigator.onLine) {
                 errorMsg = "NO INTERNET CONNECTION.";
                 showOfflineError();
                 return;
-            } else if (err.message.includes("timeout")) {
-                errorMsg = "REQUEST TIMED OUT. TRY AGAIN.";
-            } else {
-                errorMsg = "UNKNOWN ERROR. CHECK CONSOLE.";
-            }
+            } else if (err.message.includes("timeout")) errorMsg = "REQUEST TIMED OUT. TRY AGAIN.";
+            else errorMsg = "UNKNOWN ERROR. CHECK CONSOLE.";
 
             narrativeText.textContent = errorMsg;
             narrativeText.style.color = "#ff4d4d";
@@ -599,169 +651,52 @@
             particles = [];
         }
 
-        function updateUI(city, country, current, conditionObj) {
+        function updateUI(city, country, current, astro) {
             tempDisplay.textContent = `${Math.round(current.temp_c)}°`;
             feelsLikeVal.textContent = `${Math.round(current.feelslike_c)}°C`;
 
-            const stories = getStory(conditionObj.text, current.temp_c);
+            const stories = getStory(current.condition.text, current.temp_c);
             narrativeText.textContent = stories.line;
             narrativeText.style.color = stories.color;
 
             windVal.textContent = `${current.wind_kph} km/h ${current.wind_dir}`;
-            conditionVal.textContent = conditionObj.text;
+            conditionVal.textContent = current.condition.text;
             humidVal.textContent = `${current.humidity}%`;
 
+            // Astro
+            sunriseVal.textContent = astro.sunrise;
+            sunsetVal.textContent = astro.sunset;
+            moonPhaseVal.textContent = astro.moon_phase;
+            illuminationVal.textContent = `${astro.moon_illumination}%`;
+
+            // Dynamic Color for Temp
             const hue = current.temp_c > 20 ? 0 : (current.temp_c < 10 ? 220 : 140);
             tempDisplay.style.textShadow = `0 0 40px hsla(${hue}, 100%, 50%, 0.4)`;
+
+            // Update background gradient based on time of day
+            const hour = new Date().getHours();
+            const isNight = hour < 6 || hour > 18;
+            updateBackgroundGradient(document.body.classList.contains('light-mode'), isNight, current.condition.text);
         }
 
-        function renderForecast(forecastDays) {
-            forecastGrid.innerHTML = '';
+        function updateBackgroundGradient(isLightMode, isNight, conditionText) {
+            const root = document.documentElement;
             
-            forecastDays.forEach((day, index) => {
-                const date = new Date(day.date);
-                const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-                const maxTemp = Math.round(day.day.maxtemp_c);
-                const minTemp = Math.round(day.day.mintemp_c);
-                const condition = day.day.condition.text;
-                const iconUrl = day.day.condition.icon.replace('64x64', '128x128');
-
-                const card = document.createElement('div');
-                card.className = 'forecast-card';
-                card.innerHTML = `
-                    <div class="forecast-date">${index === 0 ? 'Today' : dayName}</div>
-                    <img src="${iconUrl}" alt="${condition}" style="width: 64px; height: 64px; margin: 10px 0;">
-                    <div class="forecast-temp">${maxTemp}° / ${minTemp}°</div>
-                    <div class="forecast-condition">${condition}</div>
-                `;
-                forecastGrid.appendChild(card);
-            });
-        }
-
-        // --- STORYTELLING ENGINE ---
-        function getStory(conditionText, temp) {
-            const lowerText = conditionText.toLowerCase();
-
-            if (lowerText.includes("sunny") || lowerText.includes("clear")) 
-                return { line: "THE VOID IS ILLUMINATED.", color: "#fff" };
-            
-            if (lowerText.includes("cloud") || lowerText.includes("overcast")) 
-                return { line: "VISION OBSCURED BY VAPOR.", color: "#aaa" };
-            
-            if (lowerText.includes("fog") || lowerText.includes("mist")) 
-                return { line: "VISIBILITY COMPROMISED.", color: "#ccc" };
-            
-            if (lowerText.includes("rain") || lowerText.includes("drizzle")) 
-                return { line: "THE ATMOSPHERE IS WEEPING.", color: "#4d79ff" };
-            
-            if (lowerText.includes("snow") || lowerText.includes("blizzard")) 
-                return { line: "FROZEN PARTICLES DESCEND.", color: "#fff" };
-            
-            if (lowerText.includes("thunder") || lowerText.includes("storm")) 
-                return { line: "ELECTRICAL CHAOS IMMINENT.", color: "#ffff00" };
-            
-            return { line: "ATMOSPHERIC DATA RECEIVED.", color: "#fff" };
-        }
-
-        // --- PARTICLE ENGINE ---
-        function setAtmosphere(conditionText, temp) {
-            particles = [];
-            particleType = 'none';
-            const lowerText = conditionText.toLowerCase();
-
-            if (lowerText.includes("rain") || lowerText.includes("drizzle")) {
-                particleType = 'rain';
-                playSound(rainSound);
-            } else if (lowerText.includes("snow") || lowerText.includes("blizzard")) {
-                particleType = 'snow';
-                playSound(windSound); // Wind sound for snow
-            } else if (lowerText.includes("thunder") || lowerText.includes("storm")) {
-                particleType = 'embers';
-                playSound(thunderSound);
+            if (isLightMode) {
+                if (isNight) {
+                    root.style.setProperty('--gradient-start', '#2c3e50');
+                    root.style.setProperty('--gradient-end', '#4ca1af');
+                } else {
+                    root.style.setProperty('--gradient-start', '#e0eafc');
+                    root.style.setProperty('--gradient-end', '#cfdef3');
+                }
             } else {
-                playSound(calmSound);
-            }
-            
-            const count = particleType === 'none' ? 0 : 150;
-            for (let i = 0; i < count; i++) {
-                particles.push(createParticle());
-            }
-        }
-
-        function createParticle() {
-            return {
-                x: Math.random() * width,
-                y: Math.random() * height,
-                speed: Math.random() * 5 + 2,
-                length: Math.random() * 20 + 10,
-                size: Math.random() * 2 + 1
-            };
-        }
-
-        function animateParticles() {
-            ctx.clearRect(0, 0, width, height);
-            
-            if (particleType !== 'none') {
-                ctx.fillStyle = particleType === 'snow' ? 'rgba(255,255,255,0.8)' : 
-                                particleType === 'rain' ? 'rgba(174, 194, 224, 0.5)' : 
-                                'rgba(255, 100, 0, 0.6)';
-
-                particles.forEach(p => {
-                    ctx.beginPath();
-                    
-                    if (particleType === 'rain') {
-                        ctx.moveTo(p.x, p.y);
-                        ctx.lineTo(p.x, p.y + p.length);
-                        ctx.strokeStyle = ctx.fillStyle;
-                        ctx.lineWidth = 1;
-                        ctx.stroke();
-                        p.y += p.speed * 2;
-                    } else if (particleType === 'snow') {
-                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                        ctx.fill();
-                        p.y += p.speed * 0.5;
-                        p.x += Math.sin(p.y * 0.01) * 0.5;
-                    } else if (particleType === 'embers') {
-                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                        ctx.fill();
-                        p.y -= p.speed;
-                        p.x += (Math.random() - 0.5) * 2;
-                    }
-
-                    if (p.y > height) { p.y = -20; p.x = Math.random() * width; }
-                    if (p.y < 0) { p.y = height + 20; p.x = Math.random() * width; }
-                });
-            }
-
-            requestAnimationFrame(animateParticles);
-        }
-
-        // --- AUDIO ENGINE ---
-        function playSound(audioElement) {
-            // Stop any currently playing sound
-            if (currentAudio && currentAudio !== audioElement) {
-                currentAudio.pause();
-                currentAudio.currentTime = 0;
-            }
-
-            // Play new sound if not already playing
-            if (audioElement.paused) {
-                audioElement.volume = 0.3; // Lower volume for ambient effect
-                audioElement.play().catch(e => {
-                    console.log("Audio playback failed (user interaction required):", e);
-                });
-                currentAudio = audioElement;
-            }
-        }
-
-        // Stop sounds when page is hidden
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden && currentAudio) {
-                currentAudio.pause();
-            } else if (!document.hidden && currentAudio) {
-                currentAudio.play().catch(e => {});
-            }
-        });
-    </script>
-</body>
-</html>
+                if (conditionText.toLowerCase().includes('rain')) {
+                    root.style.setProperty('--gradient-start', '#0f0c29');
+                    root.style.setProperty('--gradient-end', '#302b63');
+                } else if (conditionText.toLowerCase().includes('snow')) {
+                    root.style.setProperty('--gradient-start', '#1e3c72');
+                    root.style.setProperty('--gradient-end', '#2a5298');
+                } else if (conditionText.toLowerCase().includes('thunder')) {
+                    root.style.setProperty('--gradient-start', '#232526');
+                    root.style.setProperty('--gradient-end', '#4
