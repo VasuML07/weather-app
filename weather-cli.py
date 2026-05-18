@@ -9,8 +9,9 @@ import json
 #used for formartting the unique timestamsps
 from datetime import datetime
 
-API_KEY = "18bf8a980ad6e8a7a078cb3aac31e823"
-BASE_URL = "http://api.openweathermap.org/data/2.5/weather"
+API_KEY = "cb5ec66027fe4511a06160739261805" 
+BASE_URL = "http://api.weatherapi.com/v1/current.json"
+
 
 
 #function for taking city name as input and giving info details
