@@ -699,4 +699,204 @@
                     root.style.setProperty('--gradient-end', '#2a5298');
                 } else if (conditionText.toLowerCase().includes('thunder')) {
                     root.style.setProperty('--gradient-start', '#232526');
-                    root.style.setProperty('--gradient-end', '#4
+                    root.style.setProperty('--gradient-end', '#414345');
+                } else if (isNight) {
+                    root.style.setProperty('--gradient-start', '#0f0c29');
+                    root.style.setProperty('--gradient-end', '#302b63');
+                } else {
+                    root.style.setProperty('--gradient-start', '#11998e');
+                    root.style.setProperty('--gradient-end', '#38ef7d');
+                }
+            }
+        }
+
+        function renderHourlyForecast(hourlyData) {
+            hourlyGrid.innerHTML = '';
+            const now = new Date();
+            const currentHour = now.getHours();
+
+            // Show next 24 hours starting from current hour
+            for (let i = 0; i < 24; i++) {
+                const hourIndex = (currentHour + i) % 24;
+                const hourData = hourlyData[hourIndex];
+                const time = new Date(hourData.time);
+                const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const temp = Math.round(hourData.temp_c);
+                const condition = hourData.condition.text;
+                const iconUrl = hourData.condition.icon.replace('64x64', '128x128');
+
+                const card = document.createElement('div');
+                card.className = 'forecast-card';
+                card.innerHTML = `
+                    <div class="forecast-time">${i === 0 ? 'Now' : timeStr}</div>
+                    <img src="${iconUrl}" alt="${condition}" style="width: 48px; height: 48px; margin: 5px 0;">
+                    <div class="forecast-temp">${temp}°</div>
+                    <div class="forecast-condition">${condition.split(' ')[0]}</div>
+                `;
+                hourlyGrid.appendChild(card);
+            }
+        }
+
+        function renderDailyForecast(dailyData) {
+            dailyGrid.innerHTML = '';
+            
+            dailyData.forEach((day, index) => {
+                const date = new Date(day.date);
+                const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+                const maxTemp = Math.round(day.day.maxtemp_c);
+                const minTemp = Math.round(day.day.mintemp_c);
+                const condition = day.day.condition.text;
+                const iconUrl = day.day.condition.icon.replace('64x64', '128x128');
+
+                const card = document.createElement('div');
+                card.className = 'forecast-card';
+                card.innerHTML = `
+                    <div class="forecast-date">${index === 0 ? 'Today' : dayName}</div>
+                    <img src="${iconUrl}" alt="${condition}" style="width: 64px; height: 64px; margin: 10px 0;">
+                    <div class="forecast-temp">${maxTemp}° / ${minTemp}°</div>
+                    <div class="forecast-condition">${condition}</div>
+                `;
+                dailyGrid.appendChild(card);
+            });
+        }
+
+        // --- STORYTELLING ENGINE ---
+        function getStory(conditionText, temp) {
+            const lowerText = conditionText.toLowerCase();
+
+            if (lowerText.includes("sunny") || lowerText.includes("clear")) 
+                return { line: "THE VOID IS ILLUMINATED.", color: "#fff" };
+            if (lowerText.includes("cloud") || lowerText.includes("overcast")) 
+                return { line: "VISION OBSCURED BY VAPOR.", color: "#aaa" };
+            if (lowerText.includes("fog") || lowerText.includes("mist")) 
+                return { line: "VISIBILITY COMPROMISED.", color: "#ccc" };
+            if (lowerText.includes("rain") || lowerText.includes("drizzle")) 
+                return { line: "THE ATMOSPHERE IS WEEPING.", color: "#4d79ff" };
+            if (lowerText.includes("snow") || lowerText.includes("blizzard")) 
+                return { line: "FROZEN PARTICLES DESCEND.", color: "#fff" };
+            if (lowerText.includes("thunder") || lowerText.includes("storm")) 
+                return { line: "ELECTRICAL CHAOS IMMINENT.", color: "#ffff00" };
+            return { line: "ATMOSPHERIC DATA RECEIVED.", color: "#fff" };
+        }
+
+        // --- PARTICLE ENGINE ---
+        function setAtmosphere(conditionText, temp) {
+            particles = [];
+            particleType = 'none';
+            const lowerText = conditionText.toLowerCase();
+
+            if (lowerText.includes("rain") || lowerText.includes("drizzle")) {
+                particleType = 'rain';
+                playSound(rainSound);
+            } else if (lowerText.includes("snow") || lowerText.includes("blizzard")) {
+                particleType = 'snow';
+                playSound(windSound);
+            } else if (lowerText.includes("thunder") || lowerText.includes("storm")) {
+                particleType = 'embers';
+                playSound(thunderSound);
+            } else {
+                playSound(calmSound);
+            }
+            
+            const count = particleType === 'none' ? 0 : 150;
+            for (let i = 0; i < count; i++) {
+                particles.push(createParticle());
+            }
+        }
+
+        function createParticle() {
+            return {
+                x: Math.random() * width,
+                y: Math.random() * height,
+                speed: Math.random() * 5 + 2,
+                length: Math.random() * 20 + 10,
+                size: Math.random() * 2 + 1
+            };
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, width, height);
+            
+            if (particleType !== 'none') {
+                ctx.fillStyle = particleType === 'snow' ? 'rgba(255,255,255,0.8)' : 
+                                particleType === 'rain' ? 'rgba(174, 194, 224, 0.5)' : 
+                                'rgba(255, 100, 0, 0.6)';
+
+                particles.forEach(p => {
+                    ctx.beginPath();
+                    
+                    if (particleType === 'rain') {
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p.x, p.y + p.length);
+                        ctx.strokeStyle = ctx.fillStyle;
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                        p.y += p.speed * 2;
+                    } else if (particleType === 'snow') {
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                        p.y += p.speed * 0.5;
+                        p.x += Math.sin(p.y * 0.01) * 0.5;
+                    } else if (particleType === 'embers') {
+                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                        ctx.fill();
+                        p.y -= p.speed;
+                        p.x += (Math.random() - 0.5) * 2;
+                    }
+
+                    if (p.y > height) { p.y = -20; p.x = Math.random() * width; }
+                    if (p.y < 0) { p.y = height + 20; p.x = Math.random() * width; }
+                });
+            }
+
+            requestAnimationFrame(animateParticles);
+        }
+
+        // --- AUDIO ENGINE ---
+        function playSound(audioElement) {
+            if (currentAudio && currentAudio !== audioElement) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+
+            if (audioElement.paused) {
+                audioElement.volume = 0.3;
+                audioElement.play().catch(e => {
+                    console.log("Audio playback failed (user interaction required):", e);
+                });
+                currentAudio = audioElement;
+            }
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && currentAudio) currentAudio.pause();
+            else if (!document.hidden && currentAudio) currentAudio.play().catch(e => {});
+        });
+
+        // --- VOICE NARRATION ---
+        function speakCurrentWeather() {
+            if (!speechSynthesis) {
+                alert("Voice synthesis not supported in this browser.");
+                return;
+            }
+
+            const city = cityInput.value || "your location";
+            const temp = tempDisplay.textContent;
+            const condition = conditionVal.textContent;
+            const wind = windVal.textContent;
+            const humidity = humidVal.textContent;
+
+            const utterance = new SpeechSynthesisUtterance(
+                `Currently in ${city}, it's ${condition} with a temperature of ${temp}. 
+                 Wind speed is ${wind}, and humidity is ${humidity}. 
+                 ${narrativeText.textContent}`
+            );
+
+            utterance.rate = 0.9; // Slightly slower for clarity
+            utterance.pitch = 1;
+            speechSynthesis.cancel(); // Stop any ongoing speech
+            speechSynthesis.speak(utterance);
+        }
+    </script>
+</body>
+</html>
