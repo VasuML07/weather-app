@@ -432,7 +432,9 @@
 
     <script>
         // --- CONFIGURATION ---
-        const API_KEY = "cb5ec66027fe4511a06160739261805"; // REPLACE WITH YOUR KEY
+        // ⚠️ IMPORTANT: REPLACE THIS WITH YOUR OWN KEY FROM https://www.weatherapi.com/
+        // The key below is likely invalid or expired.
+        const API_KEY = "YOUR_API_KEY_HERE"; 
         const BASE_URL_FORECAST = "https://api.weatherapi.com/v1/forecast.json";
 
         // --- STATE ---
@@ -483,6 +485,7 @@
                 return;
             }
 
+            // Check if user has replaced the placeholder key
             if (API_KEY && API_KEY !== "YOUR_API_KEY_HERE") {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(
@@ -501,9 +504,9 @@
                     fetchWeather("London");
                 }
             } else {
-                narrativeText.textContent = "ERROR: MISSING OR INVALID API KEY IN CODE";
+                narrativeText.textContent = "ERROR: PLEASE ADD API KEY IN CODE";
                 narrativeText.style.color = "#ff4d4d";
-                console.error("Please replace 'YOUR_API_KEY_HERE' with your actual WeatherAPI.com key.");
+                alert("Please open the HTML file in a text editor and replace 'YOUR_API_KEY_HERE' with a valid key from weatherapi.com");
             }
         });
 
@@ -575,7 +578,7 @@
         // --- CORE LOGIC ---
         async function fetchWeatherByCoords(lat, lon) {
             lastCity = `${lat},${lon}`;
-            await fetchWeatherData(`${BASE_URL_FORECAST}?key=${API_KEY}&q=${lat},${lon}&days=3&aqi=no&hour=24`, true);
+            await fetchWeatherData(`${BASE_URL_FORECAST}?key=${API_KEY}&q=${lat},${lon}&days=3&aqi=no`, true);
         }
 
         async function fetchWeather(city) {
@@ -585,7 +588,7 @@
             }
 
             lastCity = city;
-            await fetchWeatherData(`${BASE_URL_FORECAST}?key=${API_KEY}&q=${encodeURIComponent(city)}&days=3&aqi=no&hour=24`, false);
+            await fetchWeatherData(`${BASE_URL_FORECAST}?key=${API_KEY}&q=${encodeURIComponent(city)}&days=3&aqi=no`, false);
         }
 
         async function fetchWeatherData(url, isCoords) {
@@ -599,8 +602,7 @@
 
                 console.log("🌐 Requesting:", url);
                 const response = await fetch(url, { timeout: 10000 });
-                console.log("📡 Response Status:", response.status);
-
+                
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error("❌ API Error:", errorText);
@@ -608,11 +610,21 @@
                 }
                 
                 const data = await response.json();
-                console.log("✅ Full Data Received:", data);
+                
+                // Safety check: Ensure we got valid data structure
+                if (!data.location || !data.current || !data.forecast) {
+                    throw new Error("Invalid Data Structure received from API");
+                }
 
                 const location = data.location;
                 const current = data.current;
                 const forecast = data.forecast;
+                
+                // Safety check for forecast days
+                if (!forecast.forecastday || forecast.forecastday.length === 0) {
+                     throw new Error("No forecast data available for this location.");
+                }
+
                 const astro = forecast.forecastday[0].astro;
 
                 // Update UI
@@ -643,12 +655,15 @@
                 showOfflineError();
                 return;
             } else if (err.message.includes("timeout")) errorMsg = "REQUEST TIMED OUT. TRY AGAIN.";
-            else errorMsg = "UNKNOWN ERROR. CHECK CONSOLE.";
+            else errorMsg = "ERROR: " + err.message;
 
             narrativeText.textContent = errorMsg;
             narrativeText.style.color = "#ff4d4d";
             particleType = 'none';
             particles = [];
+            
+            // Show retry button on error
+            retryBtn.style.display = "inline-block";
         }
 
         function updateUI(city, country, current, astro) {
@@ -718,6 +733,9 @@
             // Show next 24 hours starting from current hour
             for (let i = 0; i < 24; i++) {
                 const hourIndex = (currentHour + i) % 24;
+                // Safety check if hour exists
+                if(!hourlyData[hourIndex]) continue;
+
                 const hourData = hourlyData[hourIndex];
                 const time = new Date(hourData.time);
                 const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
