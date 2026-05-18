@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aether | Immersive Weather (WeatherAPI)</title>
+    <title>Aether | Immersive Weather Pro</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Syncopate:wght@700&display=swap');
 
@@ -16,6 +16,16 @@
             --glass: rgba(255, 255, 255, 0.03);
             --border: rgba(255, 255, 255, 0.08);
             --error-red: #ff4d4d;
+            --card-bg: rgba(255,255,255,0.05);
+        }
+
+        /* Light Mode Overrides */
+        body.light-mode {
+            --bg-color: #f0f2f5;
+            --text-main: #1a1a1a;
+            --glass: rgba(0, 0, 0, 0.03);
+            --border: rgba(0, 0, 0, 0.08);
+            --card-bg: rgba(0,0,0,0.05);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -25,16 +35,16 @@
             color: var(--text-main);
             font-family: 'Space Grotesk', sans-serif;
             height: 100vh;
-            overflow: hidden;
+            overflow-y: auto;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            transition: background 1.5s ease;
+            transition: background 1.5s ease, color 1.5s ease;
         }
 
         /* Canvas for Particles */
         #particleCanvas {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
@@ -48,7 +58,7 @@
             position: relative;
             z-index: 10;
             width: 100%;
-            max-width: 600px;
+            max-width: 800px;
             padding: 2rem;
             text-align: center;
             opacity: 0;
@@ -60,9 +70,35 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
+        /* Top Controls */
+        .top-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            width: 100%;
+        }
+
+        .geo-btn, .theme-toggle {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .geo-btn:hover, .theme-toggle:hover {
+            background: var(--text-main);
+            color: var(--bg-color);
+        }
+
         /* Search Bar - Minimalist */
         .search-container {
-            margin-bottom: 4rem;
+            margin-bottom: 3rem;
             position: relative;
             display: inline-block;
         }
@@ -86,7 +122,7 @@
             width: 320px;
         }
 
-        input::placeholder { color: rgba(255,255,255,0.3); }
+        input::placeholder { color: rgba(128,128,128,0.5); }
 
         /* The Hero Temperature */
         .hero-temp {
@@ -96,7 +132,7 @@
             font-weight: 700;
             letter-spacing: -5px;
             margin-bottom: 1rem;
-            text-shadow: 0 0 30px rgba(255,255,255,0.1);
+            text-shadow: 0 0 30px rgba(128,128,128,0.1);
             transition: color 1s ease, text-shadow 1s ease;
         }
 
@@ -105,7 +141,7 @@
             font-size: 1.1rem;
             letter-spacing: 2px;
             text-transform: uppercase;
-            color: rgba(255,255,255,0.6);
+            color: rgba(128,128,128,0.7);
             margin-bottom: 3rem;
             min-height: 1.5em;
         }
@@ -113,13 +149,13 @@
         /* Data Grid - Floating Glass */
         .data-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 20px;
             margin-top: 2rem;
         }
 
         .data-item {
-            background: var(--glass);
+            background: var(--card-bg);
             border: 1px solid var(--border);
             padding: 1.5rem 1rem;
             border-radius: 12px;
@@ -129,7 +165,7 @@
 
         .data-item:hover {
             transform: translateY(-5px);
-            background: rgba(255,255,255,0.07);
+            background: rgba(128,128,128,0.1);
         }
 
         .label {
@@ -137,13 +173,62 @@
             font-size: 0.7rem;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: rgba(255,255,255,0.4);
+            color: rgba(128,128,128,0.6);
             margin-bottom: 0.5rem;
         }
 
         .value {
             font-size: 1.2rem;
             font-weight: 500;
+        }
+
+        /* Forecast Section */
+        .forecast-section {
+            margin-top: 4rem;
+            width: 100%;
+        }
+
+        .forecast-title {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        .forecast-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .forecast-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            border-radius: 16px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .forecast-card:hover {
+            transform: scale(1.05);
+        }
+
+        .forecast-date {
+            font-size: 0.9rem;
+            color: rgba(128,128,128,0.7);
+            margin-bottom: 0.5rem;
+        }
+
+        .forecast-temp {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin: 0.5rem 0;
+        }
+
+        .forecast-condition {
+            font-size: 0.9rem;
+            color: rgba(128,128,128,0.8);
         }
 
         /* Loader */
@@ -183,10 +268,16 @@
         }
 
         /* Responsive */
-        @media (max-width: 600px) {
+        @media (max-width: 800px) {
             .hero-temp { font-size: 5rem; }
-            .data-grid { grid-template-columns: 1fr; }
+            .data-grid { grid-template-columns: repeat(2, 1fr); }
+            .forecast-grid { grid-template-columns: 1fr; }
             input { width: 200px; }
+        }
+
+        @media (max-width: 500px) {
+            .data-grid { grid-template-columns: 1fr; }
+            .top-controls { flex-direction: column; gap: 10px; }
         }
     </style>
 </head>
@@ -197,17 +288,27 @@
     <div class="loader" id="loader">INITIALIZING SENSORS...</div>
 
     <div class="interface" id="interface">
+        <!-- Top Controls -->
+        <div class="top-controls">
+            <button class="geo-btn" id="geoBtn">📍 Detect My Location</button>
+            <button class="theme-toggle" id="themeToggle">🌙 Toggle Theme</button>
+        </div>
+
+        <!-- Search -->
         <div class="search-container">
             <input type="text" id="cityInput" placeholder="Enter City Name..." autocomplete="off">
         </div>
 
+        <!-- Hero Temp -->
         <div class="hero-temp" id="tempDisplay">--°</div>
         
+        <!-- Narrative -->
         <div class="narrative" id="narrativeText">AWAITING INPUT...</div>
 
         <!-- Retry Button -->
         <button class="retry-btn" id="retryBtn">RETRY CONNECTION</button>
 
+        <!-- Current Weather Stats -->
         <div class="data-grid">
             <div class="data-item">
                 <span class="label">Wind Velocity</span>
@@ -226,19 +327,42 @@
                 <span class="value" id="feelsLikeVal">--°C</span>
             </div>
         </div>
+
+        <!-- 3-Day Forecast -->
+        <div class="forecast-section">
+            <h2 class="forecast-title">3-DAY FORECAST</h2>
+            <div class="forecast-grid" id="forecastGrid">
+                <!-- Forecast cards injected here -->
+            </div>
+        </div>
     </div>
+
+    <!-- Audio Elements -->
+    <audio id="rainSound" loop>
+        <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=rain-and-thunder-16705.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="windSound" loop>
+        <source src="https://cdn.pixabay.com/download/audio/2022/03/24/audio_c8c8a73467.mp3?filename=wind-blowing-sfx-12897.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="thunderSound" loop>
+        <source src="https://cdn.pixabay.com/download/audio/2022/03/10/audio_c9c9a73467.mp3?filename=thunderstorm-14732.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="calmSound" loop>
+        <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=calm-ambient-14732.mp3" type="audio/mpeg">
+    </audio>
 
     <script>
         // --- CONFIGURATION ---
-        // ⚠️ REPLACE THIS WITH YOUR WEATHERAPI.COM KEY
         const API_KEY = "cb5ec66027fe4511a06160739261805"; 
-        const BASE_URL = "https://api.weatherapi.com/v1/current.json"; // Use HTTPS!
+        const BASE_URL_CURRENT = "https://api.weatherapi.com/v1/current.json";
+        const BASE_URL_FORECAST = "https://api.weatherapi.com/v1/forecast.json";
 
         // --- STATE ---
         let particles = [];
-        let particleType = 'none'; // 'rain', 'snow', 'embers', 'none'
+        let particleType = 'none';
         let canvas, ctx, width, height;
-        let lastCity = ""; // Store last searched city for retry
+        let lastCity = "";
+        let currentAudio = null;
 
         // --- DOM ELEMENTS ---
         const cityInput = document.getElementById('cityInput');
@@ -251,6 +375,15 @@
         const humidVal = document.getElementById('humidVal');
         const feelsLikeVal = document.getElementById('feelsLikeVal');
         const retryBtn = document.getElementById('retryBtn');
+        const geoBtn = document.getElementById('geoBtn');
+        const themeToggle = document.getElementById('themeToggle');
+        const forecastGrid = document.getElementById('forecastGrid');
+
+        // Audio elements
+        const rainSound = document.getElementById('rainSound');
+        const windSound = document.getElementById('windSound');
+        const thunderSound = document.getElementById('thunderSound');
+        const calmSound = document.getElementById('calmSound');
 
         // --- INITIALIZATION ---
         window.addEventListener('load', () => {
@@ -266,10 +399,25 @@
                 return;
             }
 
-            // Default load only if key is valid
+            // Load default or geolocate
             if (API_KEY && API_KEY !== "YOUR_WEATHERAPI_KEY_HERE") {
-                cityInput.value = "London";
-                fetchWeather("London");
+                // Try to get user's location first
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            const { latitude, longitude } = position.coords;
+                            fetchWeatherByCoords(latitude, longitude);
+                        },
+                        (error) => {
+                            console.log("Geolocation denied or failed, loading London...");
+                            cityInput.value = "London";
+                            fetchWeather("London");
+                        }
+                    );
+                } else {
+                    cityInput.value = "London";
+                    fetchWeather("London");
+                }
             } else {
                 narrativeText.textContent = "ERROR: MISSING OR INVALID API KEY IN CODE";
                 narrativeText.style.color = "#ff4d4d";
@@ -277,7 +425,7 @@
             }
         });
 
-        // Listen for online/offline events
+        // Event Listeners
         window.addEventListener('online', () => {
             narrativeText.textContent = "CONNECTION RESTORED. RETRYING...";
             narrativeText.style.color = "#4dff88";
@@ -303,6 +451,30 @@
             }
         });
 
+        geoBtn.addEventListener('click', () => {
+            if (navigator.geolocation) {
+                narrativeText.textContent = "DETECTING LOCATION...";
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const { latitude, longitude } = position.coords;
+                        fetchWeatherByCoords(latitude, longitude);
+                    },
+                    (error) => {
+                        narrativeText.textContent = "LOCATION ACCESS DENIED.";
+                        narrativeText.style.color = "#ff4d4d";
+                    }
+                );
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+        });
+
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('light-mode');
+            const isLight = document.body.classList.contains('light-mode');
+            themeToggle.textContent = isLight ? "☀️ Toggle Theme" : "🌙 Toggle Theme";
+        });
+
         function resizeCanvas() {
             width = window.innerWidth;
             height = window.innerHeight;
@@ -319,29 +491,36 @@
         }
 
         // --- CORE LOGIC ---
+        async function fetchWeatherByCoords(lat, lon) {
+            lastCity = `${lat},${lon}`;
+            await fetchWeatherData(`${BASE_URL_CURRENT}?key=${API_KEY}&q=${lat},${lon}&aqi=no`, true);
+            await fetchForecastData(`${BASE_URL_FORECAST}?key=${API_KEY}&q=${lat},${lon}&days=3&aqi=no`);
+        }
+
         async function fetchWeather(city) {
             if (!API_KEY || API_KEY === "YOUR_WEATHERAPI_KEY_HERE") {
                 alert("Please open the HTML file and insert your WeatherAPI.com key in the JavaScript section.");
                 return;
             }
 
-            lastCity = city; // Save for retry
+            lastCity = city;
+            await fetchWeatherData(`${BASE_URL_CURRENT}?key=${API_KEY}&q=${encodeURIComponent(city)}&aqi=no`, false);
+            await fetchForecastData(`${BASE_URL_FORECAST}?key=${API_KEY}&q=${encodeURIComponent(city)}&days=3&aqi=no`);
+        }
+
+        async function fetchWeatherData(url, isCoords) {
             interfaceEl.style.opacity = '0.2';
             loader.style.display = 'block';
             retryBtn.style.display = "none";
-            narrativeText.style.color = "rgba(255,255,255,0.6)";
+            narrativeText.style.color = "rgba(128,128,128,0.7)";
 
             try {
-                // Check if online
                 if (!navigator.onLine) {
                     throw new Error("NetworkError: No internet connection");
                 }
 
-                // Fetch from WeatherAPI
-                const url = `${BASE_URL}?key=${API_KEY}&q=${encodeURIComponent(city)}&aqi=no`;
                 console.log("🌐 Requesting:", url);
-
-                const response = await fetch(url, { timeout: 10000 }); // 10 sec timeout
+                const response = await fetch(url, { timeout: 10000 });
                 console.log("📡 Response Status:", response.status);
 
                 if (!response.ok) {
@@ -351,9 +530,8 @@
                 }
                 
                 const data = await response.json();
-                console.log("✅ Data Received:", data);
+                console.log("✅ Current Data Received:", data);
 
-                // Extract Data
                 const location = data.location;
                 const current = data.current;
                 const condition = current.condition;
@@ -361,56 +539,103 @@
                 updateUI(location.name, location.country, current, condition);
                 setAtmosphere(condition.text, current.temp_c);
 
-            } catch (err) {
-                console.error(" Fetch Error:", err);
-                let errorMsg = "SIGNAL LOST.";
-
-                if (err.message.includes("401")) {
-                    errorMsg = "INVALID API KEY. CHECK CODE.";
-                } else if (err.message.includes("400")) {
-                    errorMsg = "CITY NOT FOUND. TRY AGAIN.";
-                } else if (err.message.includes("403")) {
-                    errorMsg = "KEY NOT ACTIVE YET. WAIT 2 HOURS.";
-                } else if (err.message.includes("NetworkError") || err.message.includes("Failed to fetch") || !navigator.onLine) {
-                    errorMsg = "NO INTERNET CONNECTION.";
-                    showOfflineError();
-                    return; // Don't hide loader yet
-                } else if (err.message.includes("timeout")) {
-                    errorMsg = "REQUEST TIMED OUT. TRY AGAIN.";
-                } else {
-                    errorMsg = "UNKNOWN ERROR. CHECK CONSOLE.";
+                // Update input field if not coords
+                if (!isCoords) {
+                    cityInput.value = location.name;
                 }
 
-                narrativeText.textContent = errorMsg;
-                narrativeText.style.color = "#ff4d4d";
-                particleType = 'none';
-                particles = [];
+            } catch (err) {
+                console.error(" Fetch Error:", err);
+                handleFetchError(err);
             } finally {
                 loader.style.display = 'none';
                 interfaceEl.style.opacity = '1';
             }
         }
 
+        async function fetchForecastData(url) {
+            try {
+                if (!navigator.onLine) return;
+
+                console.log("🌐 Requesting Forecast:", url);
+                const response = await fetch(url, { timeout: 10000 });
+                
+                if (!response.ok) {
+                    console.warn("Forecast API failed, skipping...");
+                    return;
+                }
+                
+                const data = await response.json();
+                console.log("✅ Forecast Data Received:", data);
+                renderForecast(data.forecast.forecastday);
+            } catch (err) {
+                console.error("Forecast Fetch Error:", err);
+                // Don't break UI if forecast fails
+            }
+        }
+
+        function handleFetchError(err) {
+            let errorMsg = "SIGNAL LOST.";
+
+            if (err.message.includes("401")) {
+                errorMsg = "INVALID API KEY. CHECK CODE.";
+            } else if (err.message.includes("400")) {
+                errorMsg = "CITY NOT FOUND. TRY AGAIN.";
+            } else if (err.message.includes("403")) {
+                errorMsg = "KEY NOT ACTIVE YET. WAIT 2 HOURS.";
+            } else if (err.message.includes("NetworkError") || err.message.includes("Failed to fetch") || !navigator.onLine) {
+                errorMsg = "NO INTERNET CONNECTION.";
+                showOfflineError();
+                return;
+            } else if (err.message.includes("timeout")) {
+                errorMsg = "REQUEST TIMED OUT. TRY AGAIN.";
+            } else {
+                errorMsg = "UNKNOWN ERROR. CHECK CONSOLE.";
+            }
+
+            narrativeText.textContent = errorMsg;
+            narrativeText.style.color = "#ff4d4d";
+            particleType = 'none';
+            particles = [];
+        }
+
         function updateUI(city, country, current, conditionObj) {
-            // Temp
             tempDisplay.textContent = `${Math.round(current.temp_c)}°`;
-            
-            // Feels Like
             feelsLikeVal.textContent = `${Math.round(current.feelslike_c)}°C`;
 
-            // Narrative Storytelling
             const stories = getStory(conditionObj.text, current.temp_c);
             narrativeText.textContent = stories.line;
             narrativeText.style.color = stories.color;
 
-            // Data
             windVal.textContent = `${current.wind_kph} km/h ${current.wind_dir}`;
             conditionVal.textContent = conditionObj.text;
             humidVal.textContent = `${current.humidity}%`;
 
-            // Dynamic Color for Temp
             const hue = current.temp_c > 20 ? 0 : (current.temp_c < 10 ? 220 : 140);
             tempDisplay.style.textShadow = `0 0 40px hsla(${hue}, 100%, 50%, 0.4)`;
+        }
+
+        function renderForecast(forecastDays) {
+            forecastGrid.innerHTML = '';
+            
+            forecastDays.forEach((day, index) => {
+                const date = new Date(day.date);
+                const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+                const maxTemp = Math.round(day.day.maxtemp_c);
+                const minTemp = Math.round(day.day.mintemp_c);
+                const condition = day.day.condition.text;
+                const iconUrl = day.day.condition.icon.replace('64x64', '128x128');
+
+                const card = document.createElement('div');
+                card.className = 'forecast-card';
+                card.innerHTML = `
+                    <div class="forecast-date">${index === 0 ? 'Today' : dayName}</div>
+                    <img src="${iconUrl}" alt="${condition}" style="width: 64px; height: 64px; margin: 10px 0;">
+                    <div class="forecast-temp">${maxTemp}° / ${minTemp}°</div>
+                    <div class="forecast-condition">${condition}</div>
+                `;
+                forecastGrid.appendChild(card);
+            });
         }
 
         // --- STORYTELLING ENGINE ---
@@ -444,16 +669,19 @@
             particleType = 'none';
             const lowerText = conditionText.toLowerCase();
 
-            // Determine Type based on WeatherAPI text descriptions
             if (lowerText.includes("rain") || lowerText.includes("drizzle")) {
                 particleType = 'rain';
+                playSound(rainSound);
             } else if (lowerText.includes("snow") || lowerText.includes("blizzard")) {
                 particleType = 'snow';
+                playSound(windSound); // Wind sound for snow
             } else if (lowerText.includes("thunder") || lowerText.includes("storm")) {
-                particleType = 'embers'; // Chaos mode
+                particleType = 'embers';
+                playSound(thunderSound);
+            } else {
+                playSound(calmSound);
             }
             
-            // Init Particles
             const count = particleType === 'none' ? 0 : 150;
             for (let i = 0; i < count; i++) {
                 particles.push(createParticle());
@@ -500,7 +728,6 @@
                         p.x += (Math.random() - 0.5) * 2;
                     }
 
-                    // Reset if out of bounds
                     if (p.y > height) { p.y = -20; p.x = Math.random() * width; }
                     if (p.y < 0) { p.y = height + 20; p.x = Math.random() * width; }
                 });
@@ -508,6 +735,33 @@
 
             requestAnimationFrame(animateParticles);
         }
+
+        // --- AUDIO ENGINE ---
+        function playSound(audioElement) {
+            // Stop any currently playing sound
+            if (currentAudio && currentAudio !== audioElement) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+
+            // Play new sound if not already playing
+            if (audioElement.paused) {
+                audioElement.volume = 0.3; // Lower volume for ambient effect
+                audioElement.play().catch(e => {
+                    console.log("Audio playback failed (user interaction required):", e);
+                });
+                currentAudio = audioElement;
+            }
+        }
+
+        // Stop sounds when page is hidden
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && currentAudio) {
+                currentAudio.pause();
+            } else if (!document.hidden && currentAudio) {
+                currentAudio.play().catch(e => {});
+            }
+        });
     </script>
 </body>
 </html>
