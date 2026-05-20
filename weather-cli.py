@@ -10,6 +10,7 @@ import json
 from datetime import datetime
 
 API_KEY = "cb5ec66027fe4511a06160739261805" 
+#defines a costant variable which stores endpoint url for fetching the data
 BASE_URL = "http://api.weatherapi.com/v1/current.json"
 
 
@@ -79,15 +80,19 @@ def display_weather(data):
 #function checking the program workflow
 
 def main():
-    if len(sys.args) < 2:
+    #checks whether user gave atleast one argument 
+    if len(sys.argv) < 2:
         print("Usage: python weather_cli.py <city_name>")
         print("Example: python weather_cli.py London")
         #if no argumet found exits with error
         sys.exit(1)
 
-        city = " ".join(sys.argv[1:])
+    #sys.argv[1:] will fetch all the script name arguments and join combines them into one strig
+    city = " ".join(sys.argv[1:])
     print(f"🔍 Fetching weather for '{city}'...")
-    
+
+
+    #calls the getweather function for gtting the present weather details
     weather_data = get_weather(city)
     if weather_data:
         display_weather(weather_data)
